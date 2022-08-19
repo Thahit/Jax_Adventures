@@ -3,14 +3,16 @@ import jax
 import jax.numpy as jnp
 from jax import lax
 import numpy as np
-from torchvision import datasets, transforms
+from torchvision import datasets
 import torch
+import matplotlib.pyplot as plt
+
 
 from jax import grad, jit, vmap, value_and_grad
 
 lr = 0.001
 batch_size = 512
-num_epochs = 300
+num_epochs = 400
 
 def init_mlp_params(layer_widths):
     params = []
@@ -32,6 +34,7 @@ params = init_mlp_params([3*(32**2), 512*2, 256, 10])
 tree = jax.tree_map(lambda x: x.shape, params)
 #print(tree)
 
+@jit
 def forward(params, x):
     *hidden, last = params
 
@@ -179,6 +182,7 @@ def minitest(params, test_loader):
             break
     return jnp.mean(jnp.array(accs))
 
+loss_dict = {}#key: epoch, value: accuracy
 for epoch in range(num_epochs):
 
     for idx, (imgs, labels) in enumerate(train_loader):
@@ -186,6 +190,12 @@ for epoch in range(num_epochs):
         flat_imgs = jnp.reshape(imgs,(batch_size,-1))
         loss, params = update(params, flat_imgs, gt_labels)
         
-    if epoch % 10 == 0:
+    if epoch % 20 == 0:
         acc = minitest(params, test_loader)
         print("epoch: ", epoch, "\tLoss(last batch): ", loss, "\t test accuracy: ", acc)
+        loss_dict[epoch] = float(acc)
+
+x = sorted(loss_dict.keys())
+y = [loss_dict[key] for key in x]
+plt.plot(x,y)
+plt.show()
